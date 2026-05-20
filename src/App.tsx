@@ -4,6 +4,7 @@ import { Home } from "./pages/Home";
 import { ListingDetail } from "./pages/ListingDetail";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
+import { Profile } from "./pages/Profile";
 import { AuthProvider } from "./AuthContext";
 
 /**
@@ -35,6 +36,7 @@ export function App() {
           <Route path="/listing/:id" element={<ListingDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/search" element={<StubPage title="Discover" />} />
           <Route path="/categories" element={<StubPage title="Categories" />} />
           <Route path="/sell" element={<StubPage title="Sell Item" />} />

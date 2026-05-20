@@ -28,15 +28,18 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
   - **Buttons:** Fully rounded (`--radius-full`). Primary buttons are solid neon lime (`var(--accent)`). Secondary buttons are bordered dark surfaces.
   - **Inputs/Forms:** Dark backgrounds (`#1a1a20`), subtle borders, neon focus states with `box-shadow` outline for accessibility. Strong typography on labels.
 - **Motion:** Framer-motion for page and component reveals. Favor staggered fade-up animations (using spring transitions) on lists/grids for a deliberate, premium feel.
+- **Forms & Validations:** Always show validation and error states clearly. Use optimistic locking (`version` field) when updating entities as required by the API.
+
 </styling_guide>
 
 <code_guidelines>
 - **Stack:** Bun, React 19, React Router v7, SWR (for data fetching), Framer Motion, Lucide React (for icons).
 - **Routing:** Client-side routing with `react-router-dom` in `App.tsx`.
-- **API Fetching:** 
+- **API Fetching & Authentication:** 
   - Use `SWR` for reactive GET requests.
   - Centralized `fetcher` and `apiCall` utilities in `src/api.ts`. 
   - API utilities must automatically attach the `Authorization: Bearer <token>` header if a token exists in `localStorage`.
+  - For user context, decode the JWT `accessToken` (using standard base64 decoding) to retrieve the `sub` claim which usually holds the `userId`.
 - **Structure:** 
   - `src/pages/` for route-level components (Home, Login, Register, ListingDetail).
   - `src/components/` for reusable UI components (Navbar).

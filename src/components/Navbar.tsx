@@ -32,9 +32,9 @@ export function Navbar() {
           
           {isAuthenticated ? (
             <>
-              <button className="btn-icon" title="Profile">
+              <Link to="/profile" className="btn-icon" title="Profile">
                 <User size={20} />
-              </button>
+              </Link>
               <button className="btn-icon" onClick={handleLogout} title="Log Out">
                 <LogOut size={20} />
               </button>
