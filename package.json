@@ -9,8 +9,12 @@
     "start": "NODE_ENV=production bun src/index.ts"
   },
   "dependencies": {
+    "framer-motion": "^12.39.0",
+    "lucide-react": "^1.16.0",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "react-router-dom": "^7.15.1",
+    "swr": "^2.4.1"
   },
   "devDependencies": {
     "@types/react": "^19",
