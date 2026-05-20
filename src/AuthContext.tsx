@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  type ReactNode,
+} from "react";
 
 /**
  * Represents the authentication state of the application.
@@ -21,9 +29,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const parseUserIdFromToken = (token: string): string | null => {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1] || ''));
+    const payload = JSON.parse(atob(token.split(".")[1] || ""));
     return payload.sub || null;
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -35,7 +43,7 @@ const parseUserIdFromToken = (token: string): string | null => {
  * @param props - Component properties
  * @param props.children - Child components that require access to the auth context
  */
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [authState, setAuthState] = useState<AuthState>({
     accessToken: null,
     isAuthenticated: false,
@@ -43,49 +51,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem("accessToken");
     if (token) {
-      setAuthState({ 
-        accessToken: token, 
+      setAuthState({
+        accessToken: token,
         isAuthenticated: true,
-        userId: parseUserIdFromToken(token)
+        userId: parseUserIdFromToken(token),
       });
     }
   }, []);
 
-  const login = (accessToken: string, refreshToken: string) => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    setAuthState({ 
-      accessToken, 
+  const login = useCallback((accessToken: string, refreshToken: string) => {
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("refreshToken", refreshToken);
+    setAuthState({
+      accessToken,
       isAuthenticated: true,
-      userId: parseUserIdFromToken(accessToken)
+      userId: parseUserIdFromToken(accessToken),
     });
-  };
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+  const logout = useCallback(() => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     setAuthState({ accessToken: null, isAuthenticated: false, userId: null });
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ ...authState, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({ ...authState, login, logout }), [authState, login, logout]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 /**
  * Custom hook to access the authentication context.
  *
  * @returns The current authentication state and context methods
- * @throws Error if used outside of an AuthProvider
+ * @throws Error if used outside an AuthProvider
  */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

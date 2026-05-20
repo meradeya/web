@@ -2,10 +2,10 @@ let envApiUrl = "http://localhost:8080/v1.0";
 try {
   // @ts-ignore
   envApiUrl = process.env.BUN_PUBLIC_API_URL || (import.meta as any).env?.VITE_API_URL || envApiUrl;
-} catch (error) {
+} catch {
   try {
     envApiUrl = (import.meta as any).env?.VITE_API_URL || envApiUrl;
-  } catch (e) {}
+  } catch {}
 }
 
 /**
@@ -24,15 +24,17 @@ export const API_URL = envApiUrl;
  */
 export const fetcher = async (url: string) => {
   const headers: HeadersInit = {};
-  const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem("accessToken");
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_URL}${url}`, { headers });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || errorData.title || 'An error occurred while fetching the data.');
+    throw new Error(
+      errorData.detail || errorData.title || "An error occurred while fetching the data.",
+    );
   }
   return res.json();
 };
@@ -48,13 +50,13 @@ export const fetcher = async (url: string) => {
  */
 export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers);
-  if (!headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
-  const token = localStorage.getItem('accessToken');
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
+  const token = localStorage.getItem("accessToken");
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -64,7 +66,7 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || errorData.title || 'API Request failed');
+    throw new Error(errorData.detail || errorData.title || "API Request failed");
   }
 
   if (res.status === 204) return null;
@@ -80,10 +82,10 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
  * @returns The formatted price string (e.g., "$1,234.00" or "MDL 1,234")
  */
 export const formatPrice = (price: number, currency: string = "MDL") => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
     currency,
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   }).format(price);
 };

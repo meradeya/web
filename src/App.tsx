@@ -40,14 +40,17 @@ export function App() {
           <Route path="/search" element={<StubPage title="Discover" />} />
           <Route path="/categories" element={<StubPage title="Categories" />} />
           <Route path="/sell" element={<StubPage title="Sell Item" />} />
-          <Route path="*" element={
-            <div className="main-content container flex items-center justify-center">
-               <div className="empty-state">
-                 <h2>404 Not Found</h2>
-                 <p className="text-muted">This page doesn't exist.</p>
-               </div>
-            </div>
-          } />
+          <Route
+            path="*"
+            element={
+              <div className="main-content container flex items-center justify-center">
+                <div className="empty-state">
+                  <h2>404 Not Found</h2>
+                  <p className="text-muted">This page doesn't exist.</p>
+                </div>
+              </div>
+            }
+          />
         </Routes>
       </div>
     </AuthProvider>

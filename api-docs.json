@@ -45,9 +45,7 @@
   "paths": {
     "/v1.0/listings": {
       "post": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Create a new listing",
         "description": "Creates a listing in DRAFT status for the authenticated seller.",
         "operationId": "createListing",
@@ -88,9 +86,7 @@
     },
     "/v1.0/listings/{listingId}/publish": {
       "post": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Publish a listing (DRAFT | ARCHIVED → ACTIVE)",
         "operationId": "publishListing",
         "parameters": [
@@ -134,9 +130,7 @@
     },
     "/v1.0/listings/{listingId}/photos": {
       "post": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Upload a photo to a listing",
         "operationId": "uploadPhoto",
         "parameters": [
@@ -161,9 +155,7 @@
                     "format": "binary"
                   }
                 },
-                "required": [
-                  "file"
-                ]
+                "required": ["file"]
               }
             }
           }
@@ -198,9 +190,7 @@
     },
     "/v1.0/listings/{listingId}/delete": {
       "post": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Delete a listing (ACTIVE or ARCHIVED to DELETED)",
         "operationId": "deleteListing",
         "parameters": [
@@ -244,9 +234,7 @@
     },
     "/v1.0/listings/{listingId}/archive": {
       "post": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Archive a listing (ACTIVE to ARCHIVED)",
         "operationId": "archiveListing",
         "parameters": [
@@ -290,9 +278,7 @@
     },
     "/v1.0/listings/search": {
       "post": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Search public listings",
         "description": "Always returns ACTIVE listings only. Supports keyword FTS, price, condition, category and sellerId filters. Use sellerId to show listings on a seller's profile page. Pagination via standard query params (page, size, sort).",
         "operationId": "searchListings",
@@ -326,9 +312,7 @@
             "required": false,
             "schema": {
               "type": "array",
-              "default": [
-                "createdAt,DESC"
-              ],
+              "default": ["createdAt,DESC"],
               "items": {
                 "type": "string"
               }
@@ -361,9 +345,7 @@
     },
     "/v1.0/auth/verify-email": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "Confirm email address",
         "description": "Consumes a single-use EMAIL_VERIFY token. Sets email_verified = true.\nToken is valid for 24 hours.\n",
         "operationId": "verifyEmail",
@@ -402,9 +384,7 @@
     },
     "/v1.0/auth/register": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "Register a new user",
         "description": "Creates a new user account and a matching profile.\nSends an email-verification message automatically.\nThe account starts with emailVerified: false; publishing a listing requires a verified email.\n",
         "operationId": "registerUser",
@@ -460,9 +440,7 @@
     },
     "/v1.0/auth/refresh": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "Rotate token pair",
         "description": "Exchanges a valid refresh token for a new access + refresh token pair.\nThe submitted refresh token is immediately revoked (rotation).\n",
         "operationId": "refreshToken",
@@ -502,9 +480,7 @@
     },
     "/v1.0/auth/password-reset/request": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "Request a password-reset email",
         "description": "Generates a PASSWORD_RESET auth_token and emails it to the user.\nAlways responds 204 to prevent email enumeration.\n",
         "operationId": "requestPasswordReset",
@@ -527,9 +503,7 @@
     },
     "/v1.0/auth/password-reset/confirm": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "Set a new password using reset token",
         "description": "Consumes a single-use PASSWORD_RESET token and replaces the password hash.\nAll existing refresh tokens for the user are revoked on success.\n",
         "operationId": "confirmPasswordReset",
@@ -555,9 +529,7 @@
     },
     "/v1.0/auth/logout": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "Revoke refresh token",
         "description": "Marks the supplied refresh token as revoked. Idempotent — revoking an already-revoked\nor unknown token still returns 204. No JWT required: the refresh token is itself the\ncredential being invalidated, and this endpoint must remain reachable regardless of\naccess-token state (e.g. when the JWT has already expired).\n",
         "operationId": "logout",
@@ -580,9 +552,7 @@
     },
     "/v1.0/auth/login": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "Authenticate and obtain tokens",
         "description": "Validates email + password. Returns a short-lived JWT access token and\na long-lived refresh token. Suspended accounts receive 403.\n",
         "operationId": "login",
@@ -638,9 +608,7 @@
     },
     "/v1.0/users/{userId}": {
       "get": {
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "summary": "Get user account + profile",
         "description": "Returns the specified user's full record including private fields (email, emailVerified, status). Requires authentication and ownership.",
         "operationId": "getUserProfile",
@@ -684,9 +652,7 @@
         ]
       },
       "patch": {
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "summary": "Update user profile",
         "description": "Partial update of the specified user's profile fields.\nSupply version (from the last GET) for optimistic-lock protection.\nEmail and password are changed via dedicated flows.\nRequires authentication and ownership.\n",
         "operationId": "updateUserProfile",
@@ -761,9 +727,7 @@
     },
     "/v1.0/listings/{listingId}": {
       "get": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Get listing detail",
         "description": "Returns full detail for an ACTIVE listing. Authenticated owners can view their listing in any status.",
         "operationId": "getListing",
@@ -795,9 +759,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Update listing fields (PATCH)",
         "description": "Partial update — null fields are ignored. Supply version for optimistic locking.",
         "operationId": "updateListing",
@@ -852,9 +814,7 @@
     },
     "/v1.0/users/{userId}/profile": {
       "get": {
-        "tags": [
-          "Users"
-        ],
+        "tags": ["Users"],
         "summary": "Get public profile",
         "description": "Returns the public-facing profile of any user.\nPrivate fields (email, status) are excluded.\nWorks without authentication; useful for seller pages.\n",
         "operationId": "getPublicProfile",
@@ -889,9 +849,7 @@
     },
     "/v1.0/listings/own": {
       "get": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Get the authenticated seller's own listings",
         "description": "Returns listings for the caller across all statuses. Use the optional status filter to narrow to a specific status.",
         "operationId": "getOwnListings",
@@ -902,12 +860,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": [
-                "DRAFT",
-                "ACTIVE",
-                "ARCHIVED",
-                "DELETED"
-              ]
+              "enum": ["DRAFT", "ACTIVE", "ARCHIVED", "DELETED"]
             }
           },
           {
@@ -939,9 +892,7 @@
             "required": false,
             "schema": {
               "type": "array",
-              "default": [
-                "createdAt,DESC"
-              ],
+              "default": ["createdAt,DESC"],
               "items": {
                 "type": "string"
               }
@@ -972,9 +923,7 @@
     },
     "/v1.0/feed": {
       "get": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Get personalised / recency feed",
         "description": "Returns newest ACTIVE listings ordered by created_at DESC. Auth optional — authenticated users will receive personalised results in a future iteration.",
         "operationId": "getFeed",
@@ -1008,9 +957,7 @@
             "required": false,
             "schema": {
               "type": "array",
-              "default": [
-                "createdAt,DESC"
-              ],
+              "default": ["createdAt,DESC"],
               "items": {
                 "type": "string"
               }
@@ -1033,9 +980,7 @@
     },
     "/v1.0/categories": {
       "get": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Get the full category tree",
         "operationId": "getCategoryTree",
         "responses": {
@@ -1057,9 +1002,7 @@
     },
     "/v1.0/listings/{listingId}/photos/{photoId}": {
       "delete": {
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "summary": "Delete a listing photo",
         "operationId": "deletePhoto",
         "parameters": [
@@ -1237,13 +1180,7 @@
           "condition": {
             "type": "string",
             "description": "Item condition",
-            "enum": [
-              "NEW",
-              "LIKE_NEW",
-              "GOOD",
-              "FAIR",
-              "POOR"
-            ]
+            "enum": ["NEW", "LIKE_NEW", "GOOD", "FAIR", "POOR"]
           },
           "location": {
             "type": "string",
@@ -1257,12 +1194,7 @@
             "description": "Custom key-value attributes"
           }
         },
-        "required": [
-          "categoryId",
-          "condition",
-          "price",
-          "title"
-        ]
+        "required": ["categoryId", "condition", "price", "title"]
       },
       "SearchListingRequest": {
         "type": "object",
@@ -1474,9 +1406,7 @@
             "minLength": 1
           }
         },
-        "required": [
-          "token"
-        ]
+        "required": ["token"]
       },
       "RegisterResponse": {
         "type": "object",
@@ -1533,11 +1463,7 @@
             "minLength": 0
           }
         },
-        "required": [
-          "displayName",
-          "email",
-          "password"
-        ]
+        "required": ["displayName", "email", "password"]
       },
       "TokenPair": {
         "type": "object",
@@ -1569,9 +1495,7 @@
             "minLength": 1
           }
         },
-        "required": [
-          "refreshToken"
-        ]
+        "required": ["refreshToken"]
       },
       "RequestPasswordResetRequest": {
         "type": "object",
@@ -1584,9 +1508,7 @@
             "minLength": 1
           }
         },
-        "required": [
-          "email"
-        ]
+        "required": ["email"]
       },
       "ConfirmPasswordResetRequest": {
         "type": "object",
@@ -1604,10 +1526,7 @@
             "minLength": 8
           }
         },
-        "required": [
-          "newPassword",
-          "token"
-        ]
+        "required": ["newPassword", "token"]
       },
       "LoginRequest": {
         "type": "object",
@@ -1625,10 +1544,7 @@
             "minLength": 1
           }
         },
-        "required": [
-          "email",
-          "password"
-        ]
+        "required": ["email", "password"]
       },
       "MyProfile": {
         "type": "object",
@@ -1650,11 +1566,7 @@
           "status": {
             "type": "string",
             "description": "Account status",
-            "enum": [
-              "ACTIVE",
-              "SUSPENDED",
-              "DELETED"
-            ]
+            "enum": ["ACTIVE", "SUSPENDED", "DELETED"]
           },
           "displayName": {
             "type": "string",
@@ -1714,9 +1626,7 @@
             "description": "Current version for optimistic locking (from last GET)"
           }
         },
-        "required": [
-          "version"
-        ]
+        "required": ["version"]
       },
       "UpdateListingRequest": {
         "type": "object",
@@ -1752,13 +1662,7 @@
           "condition": {
             "type": "string",
             "description": "New condition",
-            "enum": [
-              "NEW",
-              "LIKE_NEW",
-              "GOOD",
-              "FAIR",
-              "POOR"
-            ]
+            "enum": ["NEW", "LIKE_NEW", "GOOD", "FAIR", "POOR"]
           },
           "location": {
             "type": "string",
@@ -1777,9 +1681,7 @@
             "description": "Current optimistic lock version (from last GET)"
           }
         },
-        "required": [
-          "version"
-        ]
+        "required": ["version"]
       },
       "PublicProfile": {
         "type": "object",

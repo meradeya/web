@@ -8,28 +8,35 @@ export function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate("/");
   };
 
   return (
     <nav className="navbar">
       <div className="container">
         <Link to="/" className="brand">
-          <span className="brand-dot"></span>
-          Meradeya
+          <span className="brand-dot"></span> Meradeya
         </Link>
-        
+
         <div className="nav-links">
-          <Link to="/search" className="nav-link">Discover</Link>
-          <Link to="/categories" className="nav-link">Categories</Link>
-          {isAuthenticated && <Link to="/sell" className="nav-link">Sell Item</Link>}
+          <Link to="/search" className="nav-link">
+            Discover
+          </Link>
+          <Link to="/categories" className="nav-link">
+            Categories
+          </Link>
+          {isAuthenticated && (
+            <Link to="/sell" className="nav-link">
+              Sell Item
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
           <button className="btn-icon">
             <Search size={20} />
           </button>
-          
+
           {isAuthenticated ? (
             <>
               <Link to="/profile" className="btn-icon" title="Profile">
