@@ -1,0 +1,1846 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Meradeya API",
+    "description": "Public-facing REST API for the Meradeya marketplace platform.",
+    "contact": {
+      "name": "Meradeya Team",
+      "url": "https://github.com/meradeya"
+    },
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/",
+      "description": "Local development"
+    },
+    {
+      "url": "https://api.staging.meradeya.com/",
+      "description": "Staging"
+    },
+    {
+      "url": "https://api.meradeya.com/",
+      "description": "Production"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Authentication and token management"
+    },
+    {
+      "name": "Users",
+      "description": "User profiles"
+    },
+    {
+      "name": "Listings",
+      "description": "Listing discovery, management and photo uploads"
+    }
+  ],
+  "paths": {
+    "/v1.0/listings": {
+      "post": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Create a new listing",
+        "description": "Creates a listing in DRAFT status for the authenticated seller.",
+        "operationId": "createListing",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Listing created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Seller or category not found"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/listings/{listingId}/publish": {
+      "post": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Publish a listing (DRAFT | ARCHIVED → ACTIVE)",
+        "operationId": "publishListing",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published listing",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the listing owner"
+          },
+          "409": {
+            "description": "Optimistic lock conflict"
+          },
+          "422": {
+            "description": "Invalid status transition"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/listings/{listingId}/photos": {
+      "post": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Upload a photo to a listing",
+        "operationId": "uploadPhoto",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated listing with new photo",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file type or size"
+          },
+          "404": {
+            "description": "Listing not found"
+          },
+          "422": {
+            "description": "Photo limit exceeded"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/listings/{listingId}/delete": {
+      "post": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Delete a listing (ACTIVE or ARCHIVED to DELETED)",
+        "operationId": "deleteListing",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted listing",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the listing owner"
+          },
+          "409": {
+            "description": "Optimistic lock conflict"
+          },
+          "422": {
+            "description": "Invalid status transition"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/listings/{listingId}/archive": {
+      "post": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Archive a listing (ACTIVE to ARCHIVED)",
+        "operationId": "archiveListing",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archived listing",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the listing owner"
+          },
+          "409": {
+            "description": "Optimistic lock conflict"
+          },
+          "422": {
+            "description": "Invalid status transition"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/listings/search": {
+      "post": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Search public listings",
+        "description": "Always returns ACTIVE listings only. Supports keyword FTS, price, condition, category and sellerId filters. Use sellerId to show listings on a seller's profile page. Pagination via standard query params (page, size, sort).",
+        "operationId": "searchListings",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Paginated listing summaries",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageListingSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1.0/auth/verify-email": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Confirm email address",
+        "description": "Consumes a single-use EMAIL_VERIFY token. Sets email_verified = true.\nToken is valid for 24 hours.\n",
+        "operationId": "verifyEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Email verified"
+          },
+          "400": {
+            "description": "Token invalid, expired, or already used",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Invalid Token",
+                  "status": 400,
+                  "detail": "The verification token is invalid or has expired."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1.0/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Register a new user",
+        "description": "Creates a new user account and a matching profile.\nSends an email-verification message automatically.\nThe account starts with emailVerified: false; publishing a listing requires a verified email.\n",
+        "operationId": "registerUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "User created; token pair issued; verification email dispatched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Email Already Exists",
+                  "status": 409,
+                  "detail": "An account with this email already exists."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1.0/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Rotate token pair",
+        "description": "Exchanges a valid refresh token for a new access + refresh token pair.\nThe submitted refresh token is immediately revoked (rotation).\n",
+        "operationId": "refreshToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "New token pair issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh token invalid, expired, or already revoked",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1.0/auth/password-reset/request": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request a password-reset email",
+        "description": "Generates a PASSWORD_RESET auth_token and emails it to the user.\nAlways responds 204 to prevent email enumeration.\n",
+        "operationId": "requestPasswordReset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Reset email dispatched (or silently ignored if unknown)"
+          }
+        }
+      }
+    },
+    "/v1.0/auth/password-reset/confirm": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Set a new password using reset token",
+        "description": "Consumes a single-use PASSWORD_RESET token and replaces the password hash.\nAll existing refresh tokens for the user are revoked on success.\n",
+        "operationId": "confirmPasswordReset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Password updated; all sessions invalidated"
+          },
+          "400": {
+            "description": "Token invalid, expired, or already used"
+          }
+        }
+      }
+    },
+    "/v1.0/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Revoke refresh token",
+        "description": "Marks the supplied refresh token as revoked. Idempotent — revoking an already-revoked\nor unknown token still returns 204. No JWT required: the refresh token is itself the\ncredential being invalidated, and this endpoint must remain reachable regardless of\naccess-token state (e.g. when the JWT has already expired).\n",
+        "operationId": "logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Token revoked (or was already revoked)"
+          }
+        }
+      }
+    },
+    "/v1.0/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Authenticate and obtain tokens",
+        "description": "Validates email + password. Returns a short-lived JWT access token and\na long-lived refresh token. Suspended accounts receive 403.\n",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Account suspended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Account Suspended",
+                  "status": 403,
+                  "detail": "Your account has been suspended."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1.0/users/{userId}": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Get user account + profile",
+        "description": "Returns the specified user's full record including private fields (email, emailVerified, status). Requires authentication and ownership.",
+        "operationId": "getUserProfile",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "Target user's ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Update user profile",
+        "description": "Partial update of the specified user's profile fields.\nSupply version (from the last GET) for optimistic-lock protection.\nEmail and password are changed via dedicated flows.\nRequires authentication and ownership.\n",
+        "operationId": "updateUserProfile",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "Target user's ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Not authenticated"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "409": {
+            "description": "Optimistic lock conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                },
+                "example": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "detail": "Profile was modified by another request."
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/listings/{listingId}": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Get listing detail",
+        "description": "Returns full detail for an ACTIVE listing. Authenticated owners can view their listing in any status.",
+        "operationId": "getListing",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listing detail",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found or not active"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Update listing fields (PATCH)",
+        "description": "Partial update — null fields are ignored. Supply version for optimistic locking.",
+        "operationId": "updateListing",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateListingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated listing",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not the listing owner"
+          },
+          "404": {
+            "description": "Listing not found"
+          },
+          "409": {
+            "description": "Optimistic lock conflict — re-fetch and retry"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/users/{userId}/profile": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Get public profile",
+        "description": "Returns the public-facing profile of any user.\nPrivate fields (email, status) are excluded.\nWorks without authentication; useful for seller pages.\n",
+        "operationId": "getPublicProfile",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "description": "Target user's ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfile"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/v1.0/listings/own": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Get the authenticated seller's own listings",
+        "description": "Returns listings for the caller across all statuses. Use the optional status filter to narrow to a specific status.",
+        "operationId": "getOwnListings",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "ACTIVE",
+                "ARCHIVED",
+                "DELETED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated listing summaries",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageListingSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/v1.0/feed": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Get personalised / recency feed",
+        "description": "Returns newest ACTIVE listings ordered by created_at DESC. Auth optional — authenticated users will receive personalised results in a future iteration.",
+        "operationId": "getFeed",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "default": [
+                "createdAt,DESC"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated feed of listing summaries",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageListingSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1.0/categories": {
+      "get": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Get the full category tree",
+        "operationId": "getCategoryTree",
+        "responses": {
+          "200": {
+            "description": "Category tree",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTreeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1.0/listings/{listingId}/photos/{photoId}": {
+      "delete": {
+        "tags": [
+          "Listings"
+        ],
+        "summary": "Delete a listing photo",
+        "operationId": "deletePhoto",
+        "parameters": [
+          {
+            "name": "listingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "photoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated listing after photo removal",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Listing or photo not found"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ListingDetail": {
+        "type": "object",
+        "description": "Full detail of a single listing",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Listing ID"
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Seller user ID"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Category ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "condition": {
+            "type": "string",
+            "description": "Item condition"
+          },
+          "status": {
+            "type": "string",
+            "description": "Listing status"
+          },
+          "location": {
+            "type": "string",
+            "description": "Seller location"
+          },
+          "attributes": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Custom attributes"
+          },
+          "photos": {
+            "type": "array",
+            "description": "Photos ordered by display order",
+            "items": {
+              "$ref": "#/components/schemas/ListingPhotoDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version — echo back for PATCH requests"
+          }
+        }
+      },
+      "ListingPhotoDto": {
+        "type": "object",
+        "description": "A listing photo",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Photo ID"
+          },
+          "url": {
+            "type": "string",
+            "description": "Server-relative URL of the photo"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Display order (0-based)"
+          }
+        }
+      },
+      "CreateListingRequest": {
+        "type": "object",
+        "description": "Request body to create a new listing",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Category ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Listing title",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price",
+            "minimum": 0.01
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO 4217 currency code, defaults to MDL",
+            "maxLength": 3,
+            "minLength": 3,
+            "pattern": "[A-Z]{3}"
+          },
+          "condition": {
+            "type": "string",
+            "description": "Item condition",
+            "enum": [
+              "NEW",
+              "LIKE_NEW",
+              "GOOD",
+              "FAIR",
+              "POOR"
+            ]
+          },
+          "location": {
+            "type": "string",
+            "description": "Seller location",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "attributes": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Custom key-value attributes"
+          }
+        },
+        "required": [
+          "categoryId",
+          "condition",
+          "price",
+          "title"
+        ]
+      },
+      "SearchListingRequest": {
+        "type": "object",
+        "description": "Request body for listing search — always returns ACTIVE listings only",
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Full-text search keyword"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Filter by category ID"
+          },
+          "condition": {
+            "type": "string",
+            "description": "Filter by condition (NEW, LIKE_NEW, GOOD, FAIR, POOR)"
+          },
+          "minPrice": {
+            "type": "number",
+            "description": "Minimum price (inclusive)"
+          },
+          "maxPrice": {
+            "type": "number",
+            "description": "Maximum price (inclusive)"
+          },
+          "sellerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Filter by seller ID — use for seller profile pages"
+          }
+        }
+      },
+      "ListingSummary": {
+        "type": "object",
+        "description": "Summary information about a listing",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Listing ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency code"
+          },
+          "condition": {
+            "type": "string",
+            "description": "Item condition"
+          },
+          "status": {
+            "type": "string",
+            "description": "Listing status"
+          },
+          "location": {
+            "type": "string",
+            "description": "Seller location"
+          },
+          "firstPhotoUrl": {
+            "type": "string",
+            "description": "URL of the first photo"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Listing creation timestamp"
+          }
+        }
+      },
+      "PageListingSummary": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListingSummary"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "paged": {
+            "type": "boolean"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "unpaged": {
+            "type": "boolean"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "sorted": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProblemDetail": {
+        "type": "object",
+        "description": "RFC 7807 Problem Details error response",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri",
+            "description": "URI reference identifying the problem type.",
+            "example": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short, human-readable summary of the problem type.",
+            "example": "Email Already Exists"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code associated with this problem.",
+            "example": 409
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable explanation specific to this occurrence of the problem.",
+            "example": "The email address is already registered."
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri",
+            "description": "URI reference identifying the specific occurrence of the problem."
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Additional problem-specific properties."
+          }
+        }
+      },
+      "VerifyEmailRequest": {
+        "type": "object",
+        "description": "Email verification request payload",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Single-use email verification token",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "RegisterResponse": {
+        "type": "object",
+        "description": "Successful registration response — token pair + user info",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Newly created user ID"
+          },
+          "email": {
+            "type": "string",
+            "description": "Registered email address"
+          },
+          "accessToken": {
+            "type": "string",
+            "description": "Short-lived JWT access token"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Long-lived refresh token"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Access token lifetime in seconds",
+            "example": 900
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "description": "Registration request payload",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User's email address",
+            "example": "ada@example.com",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "description": "Password (min 8 characters)",
+            "example": "S3cur3Pass!",
+            "maxLength": 2147483647,
+            "minLength": 8
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display name shown on the profile",
+            "example": "Ada Lovelace",
+            "maxLength": 100,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "displayName",
+          "email",
+          "password"
+        ]
+      },
+      "TokenPair": {
+        "type": "object",
+        "description": "JWT access + refresh token pair",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "Short-lived JWT access token"
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Long-lived refresh token"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Access token lifetime in seconds",
+            "example": 900
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "description": "Refresh token payload",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "The refresh token to use or revoke",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "RequestPasswordResetRequest": {
+        "type": "object",
+        "description": "Password reset request payload",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address of the account",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ConfirmPasswordResetRequest": {
+        "type": "object",
+        "description": "Password reset confirmation payload",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Single-use password reset token",
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "New password (min 8 characters)",
+            "maxLength": 2147483647,
+            "minLength": 8
+          }
+        },
+        "required": [
+          "newPassword",
+          "token"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "description": "Login request payload",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "User's email address",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "description": "User's password",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "MyProfile": {
+        "type": "object",
+        "description": "Authenticated user's full profile including private fields",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User's unique ID"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "description": "Whether the email has been verified"
+          },
+          "status": {
+            "type": "string",
+            "description": "Account status",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "DELETED"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "description": "Avatar URL"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location"
+          },
+          "bio": {
+            "type": "string",
+            "description": "Bio"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last updated timestamp"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Optimistic lock version"
+          }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "description": "Partial update payload for the authenticated user's profile",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "New display name",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "avatarUrl": {
+            "type": "string",
+            "description": "New avatar URL"
+          },
+          "location": {
+            "type": "string",
+            "description": "New location",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "bio": {
+            "type": "string",
+            "description": "New bio"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Current version for optimistic locking (from last GET)"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "UpdateListingRequest": {
+        "type": "object",
+        "description": "Request body for partial listing update (PATCH semantics — null fields are ignored)",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "New category ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "New title",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string",
+            "description": "New description"
+          },
+          "price": {
+            "type": "number",
+            "description": "New price",
+            "minimum": 0.01
+          },
+          "currency": {
+            "type": "string",
+            "description": "New currency code",
+            "maxLength": 3,
+            "minLength": 3,
+            "pattern": "[A-Z]{3}"
+          },
+          "condition": {
+            "type": "string",
+            "description": "New condition",
+            "enum": [
+              "NEW",
+              "LIKE_NEW",
+              "GOOD",
+              "FAIR",
+              "POOR"
+            ]
+          },
+          "location": {
+            "type": "string",
+            "description": "New location",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "attributes": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "New attributes map"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Current optimistic lock version (from last GET)"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "PublicProfile": {
+        "type": "object",
+        "description": "Public-facing user profile (no private fields)",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User's unique ID"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "description": "Avatar URL"
+          },
+          "location": {
+            "type": "string",
+            "description": "Location"
+          },
+          "bio": {
+            "type": "string",
+            "description": "Bio"
+          }
+        }
+      },
+      "CategoryTreeDto": {
+        "type": "object",
+        "description": "Category node in the category tree",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Category ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Category name"
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL slug"
+          },
+          "children": {
+            "type": "array",
+            "description": "Child categories",
+            "items": {
+              "$ref": "#/components/schemas/CategoryTreeDto"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
