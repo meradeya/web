@@ -1,3 +1,5 @@
+import { emitAuthSyncEvent } from "./authSync";
+
 let envApiUrl = "http://localhost:8080/v1.0";
 try {
   // @ts-ignore
@@ -45,7 +47,7 @@ async function attemptTokenRefresh(): Promise<boolean> {
       if (!response.ok) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
-        globalThis.dispatchEvent?.(new Event("auth:logout"));
+        emitAuthSyncEvent("logout");
         return false;
       }
 
@@ -56,13 +58,13 @@ async function attemptTokenRefresh(): Promise<boolean> {
       localStorage.setItem("accessToken", newAccessToken);
       localStorage.setItem("refreshToken", newRefreshToken);
 
-      globalThis.dispatchEvent?.(new Event("auth:tokensRefreshed"));
+      emitAuthSyncEvent("tokensRefreshed");
       return true;
     } catch (err) {
       console.error("Token refresh failed:", err);
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
-      globalThis.dispatchEvent?.(new Event("auth:logout"));
+      emitAuthSyncEvent("logout");
       return false;
     } finally {
       refreshInProgressRef = false;

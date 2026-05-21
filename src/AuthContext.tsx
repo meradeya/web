@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { API_URL } from "./api";
+import { emitAuthSyncEvent, subscribeAuthSyncEvents } from "./authSync";
 
 /**
  * Represents the authentication state of the application.
@@ -113,6 +114,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         expiresAt,
       });
 
+      emitAuthSyncEvent("tokensRefreshed");
+
       scheduleTokenRefresh(expiresIn);
       return true;
     } catch (err) {
@@ -127,8 +130,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
    * Force logout the user, clearing all tokens and auth state.
    * This is called when refresh fails or token is invalid.
    */
-  const forceLogout = useCallback(async () => {
-    const refreshToken = localStorage.getItem("refreshToken");
+  const forceLogout = useCallback(
+    async ({ broadcast = true, revokeOnServer = true }: { broadcast?: boolean; revokeOnServer?: boolean } = {}) => {
+      const refreshToken = localStorage.getItem("refreshToken");
 
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
@@ -140,23 +144,29 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       expiresAt: null,
     });
 
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-    }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+
+      if (broadcast) {
+        emitAuthSyncEvent("logout");
+      }
 
     // Optional: revoke the refresh token on the server
-    if (refreshToken) {
-      try {
-        await fetch(`${API_URL}/auth/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-        });
-      } catch (err) {
-        console.error("Failed to revoke refresh token:", err);
+      if (revokeOnServer && refreshToken) {
+        try {
+          await fetch(`${API_URL}/auth/logout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          });
+        } catch (err) {
+          console.error("Failed to revoke refresh token:", err);
+        }
       }
-    }
-  }, []);
+    },
+    [],
+  );
 
   /**
    * Schedule token refresh to occur shortly before expiry.
@@ -233,6 +243,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       });
 
       scheduleTokenRefresh(expiresInSeconds);
+      emitAuthSyncEvent("tokensRefreshed");
     },
     [scheduleTokenRefresh],
   );
@@ -250,33 +261,30 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
    * Listen for auth events from the API layer (token refresh or logout).
    */
   useEffect(() => {
-    const handleAuthLogout = () => {
-      forceLogout();
-    };
-
-    const handleTokensRefreshed = () => {
-      const token = localStorage.getItem("accessToken");
-      if (token) {
-        const expiresAt = getTokenExpiryTime(token);
-        const expiresInSeconds = expiresAt ? Math.round((expiresAt - Date.now()) / 1000) : 900;
-
-        setAuthState({
-          accessToken: token,
-          isAuthenticated: true,
-          userId: parseUserIdFromToken(token),
-          expiresAt: expiresAt || Date.now() + expiresInSeconds * 1000,
-        });
-        scheduleTokenRefresh(expiresInSeconds);
+    const unsubscribe = subscribeAuthSyncEvents((type) => {
+      if (type === "logout") {
+        forceLogout({ broadcast: false, revokeOnServer: false });
+        return;
       }
-    };
 
-    globalThis.addEventListener("auth:logout", handleAuthLogout);
-    globalThis.addEventListener("auth:tokensRefreshed", handleTokensRefreshed);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        return;
+      }
 
-    return () => {
-      globalThis.removeEventListener("auth:logout", handleAuthLogout);
-      globalThis.removeEventListener("auth:tokensRefreshed", handleTokensRefreshed);
-    };
+      const expiresAt = getTokenExpiryTime(token);
+      const expiresInSeconds = expiresAt ? Math.round((expiresAt - Date.now()) / 1000) : 900;
+
+      setAuthState({
+        accessToken: token,
+        isAuthenticated: true,
+        userId: parseUserIdFromToken(token),
+        expiresAt: expiresAt || Date.now() + expiresInSeconds * 1000,
+      });
+      scheduleTokenRefresh(expiresInSeconds);
+    });
+
+    return unsubscribe;
   }, [forceLogout, scheduleTokenRefresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
