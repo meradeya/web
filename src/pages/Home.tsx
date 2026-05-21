@@ -1,7 +1,7 @@
 import { motion, type Variants } from "framer-motion";
 import useSWR from "swr";
 import { Link } from "react-router-dom";
-import { fetcher, formatPrice, resolvePhotoUrl } from "../api";
+import { fetcher, formatPrice, resolvePhotoUrl, generateId } from "../api";
 import { ArrowRight, Sparkles, ImageOff } from "lucide-react";
 
 const container: Variants = {
@@ -52,11 +52,7 @@ export function Home() {
         {isLoading && (
           <div className="grid">
             {Array.from({ length: 8 }).map(() => (
-              <div
-                key={crypto.randomUUID()}
-                className="card skeleton"
-                style={{ height: "400px" }}
-              ></div>
+              <div key={generateId()} className="card skeleton" style={{ height: "400px" }}></div>
             ))}
           </div>
         )}
