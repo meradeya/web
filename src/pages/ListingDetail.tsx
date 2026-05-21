@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import useSWR from "swr";
-import { fetcher, formatPrice } from "../api";
+import { fetcher, formatPrice, resolvePhotoUrl } from "../api";
 import { motion } from "framer-motion";
 import { ArrowLeft, ShieldCheck, MapPin, Clock, ImageOff } from "lucide-react";
 
@@ -30,7 +30,9 @@ export function ListingDetail() {
 
   const mainImage =
     listing.photos && listing.photos.length > 0
-      ? listing.photos.find((p: any) => p.displayOrder === 0)?.url || listing.photos[0].url
+      ? resolvePhotoUrl(
+          listing.photos.find((p: any) => p.displayOrder === 0)?.url || listing.photos[0].url,
+        )
       : null;
 
   return (

@@ -15,6 +15,17 @@ try {
 export const API_URL = envApiUrl;
 
 /**
+ * Resolves a server-relative photo URL to a full absolute URL.
+ *
+ * @param url - The server-relative path (e.g., /media/...)
+ * @returns The absolute URL
+ */
+export const resolvePhotoUrl = (url: string) => {
+  const baseUrl = API_URL.replace(/\/v1\.0$/, "");
+  return `${baseUrl}${url}`;
+};
+
+/**
  * Basic fetch wrapper designed for use with SWR hooks.
  * Automatically attaches the Authorization header if a token is present in localStorage.
  *

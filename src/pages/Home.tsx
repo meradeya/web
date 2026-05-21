@@ -1,7 +1,7 @@
 import { motion, type Variants } from "framer-motion";
 import useSWR from "swr";
 import { Link } from "react-router-dom";
-import { fetcher, formatPrice } from "../api";
+import { fetcher, formatPrice, resolvePhotoUrl } from "../api";
 import { ArrowRight, Sparkles, ImageOff } from "lucide-react";
 
 const container: Variants = {
@@ -82,7 +82,7 @@ export function Home() {
                     <div className="card-image-wrap">
                       {listing.firstPhotoUrl ? (
                         <img
-                          src={listing.firstPhotoUrl}
+                          src={resolvePhotoUrl(listing.firstPhotoUrl)}
                           alt={listing.title}
                           className="card-image"
                         />
