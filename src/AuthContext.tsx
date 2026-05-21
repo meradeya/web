@@ -1,12 +1,12 @@
 import {
   createContext,
+  type ReactNode,
+  useCallback,
   useContext,
-  useState,
   useEffect,
   useMemo,
-  useCallback,
   useRef,
-  type ReactNode,
+  useState,
 } from "react";
 import { API_URL } from "./api";
 import { emitAuthSyncEvent, subscribeAuthSyncEvents } from "./authSync";
@@ -131,18 +131,21 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
    * This is called when refresh fails or token is invalid.
    */
   const forceLogout = useCallback(
-    async ({ broadcast = true, revokeOnServer = true }: { broadcast?: boolean; revokeOnServer?: boolean } = {}) => {
+    async ({
+      broadcast = true,
+      revokeOnServer = true,
+    }: { broadcast?: boolean; revokeOnServer?: boolean } = {}) => {
       const refreshToken = localStorage.getItem("refreshToken");
 
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
 
-    setAuthState({
-      accessToken: null,
-      isAuthenticated: false,
-      userId: null,
-      expiresAt: null,
-    });
+      setAuthState({
+        accessToken: null,
+        isAuthenticated: false,
+        userId: null,
+        expiresAt: null,
+      });
 
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
@@ -152,7 +155,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         emitAuthSyncEvent("logout");
       }
 
-    // Optional: revoke the refresh token on the server
+      // Optional: revoke the refresh token on the server
       if (revokeOnServer && refreshToken) {
         try {
           await fetch(`${API_URL}/auth/logout`, {
@@ -261,7 +264,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
    * Listen for auth events from the API layer (token refresh or logout).
    */
   useEffect(() => {
-    const unsubscribe = subscribeAuthSyncEvents((type) => {
+    return subscribeAuthSyncEvents((type) => {
       if (type === "logout") {
         forceLogout({ broadcast: false, revokeOnServer: false });
         return;
@@ -283,8 +286,6 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       });
       scheduleTokenRefresh(expiresInSeconds);
     });
-
-    return unsubscribe;
   }, [forceLogout, scheduleTokenRefresh]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

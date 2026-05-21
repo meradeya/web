@@ -107,4 +107,3 @@ export const subscribeAuthSyncEvents = (
     authChannel?.removeEventListener("message", handleChannelMessage);
   };
 };
-

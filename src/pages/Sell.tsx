@@ -1,10 +1,97 @@
-import { type SyntheticEvent, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import useSWR from "swr";
 import { apiCall, fetcher } from "../api";
 import { useAuth } from "../AuthContext";
 import { AlertCircle, ArrowRight, Upload } from "lucide-react";
+
+type SellMode = "draft" | "publish";
+
+type ListingPayload = Record<string, any>;
+
+function buildListingPayload({
+  title,
+  description,
+  price,
+  currency,
+  condition,
+  location,
+  categoryId,
+  mode,
+}: {
+  title: string;
+  description: string;
+  price: string;
+  currency: string;
+  condition: string;
+  location: string;
+  categoryId: string;
+  mode: SellMode;
+}): ListingPayload {
+  const normalizedPrice = Number.parseFloat(price);
+  const payload: ListingPayload = {};
+
+  if (title.trim()) payload.title = title.trim();
+  if (description.trim()) payload.description = description.trim();
+  if (Number.isFinite(normalizedPrice) && normalizedPrice > 0) payload.price = normalizedPrice;
+  payload.condition = condition || "GOOD";
+  if (mode === "publish") payload.currency = currency;
+  if (location.trim()) payload.location = location.trim();
+  if (categoryId) payload.categoryId = categoryId;
+
+  return payload;
+}
+
+function getPublishValidationMessage({
+  title,
+  categoryId,
+  price,
+  condition,
+}: {
+  title: string;
+  categoryId: string;
+  price: string;
+  condition: string;
+}) {
+  const normalizedPrice = Number.parseFloat(price);
+
+  if (
+    title.trim().length === 0 ||
+    categoryId.length === 0 ||
+    price.trim().length === 0 ||
+    !Number.isFinite(normalizedPrice) ||
+    normalizedPrice <= 0 ||
+    condition.length === 0
+  ) {
+    return "Fill Title, Category, Price, and Condition to publish now.";
+  }
+
+  return "";
+}
+
+async function uploadListingPhoto({ listingId, photo }: { listingId: string; photo: File }) {
+  const formData = new FormData();
+  formData.append("file", photo);
+
+  const token = localStorage.getItem("accessToken");
+  const headers: HeadersInit = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080/v1.0";
+  const photoRes = await fetch(`${API_URL}/listings/${listingId}/photos`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!photoRes.ok) {
+    const photoErr = await photoRes.json().catch(() => ({}));
+    console.warn("Photo upload failed:", photoErr);
+  }
+}
 
 export function Sell() {
   const [title, setTitle] = useState("");
@@ -18,6 +105,7 @@ export function Sell() {
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [submitMode, setSubmitMode] = useState<"draft" | "publish" | null>(null);
 
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -44,68 +132,81 @@ export function Sell() {
     );
   }
 
-  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const hasAnyInput =
+    title.trim().length > 0 ||
+    description.trim().length > 0 ||
+    price.trim().length > 0 ||
+    location.trim().length > 0 ||
+    categoryId.length > 0 ||
+    photo !== null ||
+    currency !== "MDL" ||
+    condition !== "GOOD";
+
+  const requiredFieldsComplete =
+    title.trim().length > 0 &&
+    categoryId.length > 0 &&
+    price.trim().length > 0 &&
+    Number.isFinite(Number.parseFloat(price)) &&
+    Number.parseFloat(price) > 0 &&
+    condition.length > 0;
+
+  const handleSubmit = async (mode: SellMode) => {
     setError("");
     setIsLoading(true);
+    setSubmitMode(mode);
 
     try {
-      if (!categoryId) {
-        throw new Error("Please select a category.");
+      if (mode === "publish") {
+        const validationMessage = getPublishValidationMessage({
+          title,
+          categoryId,
+          price,
+          condition,
+        });
+
+        if (validationMessage) {
+          setError(validationMessage);
+          return;
+        }
       }
+
+      const payload = buildListingPayload({
+        title,
+        description,
+        price,
+        currency,
+        condition,
+        location,
+        categoryId,
+        mode,
+      });
 
       // 1. Create the listing (DRAFT)
       const listingData = await apiCall("/listings", {
         method: "POST",
-        body: JSON.stringify({
-          title,
-          description,
-          price: Number.parseFloat(price),
-          currency,
-          condition,
-          location,
-          categoryId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const listingId = listingData.id;
 
       // 2. Upload photo if selected
       if (photo) {
-        const formData = new FormData();
-        formData.append("file", photo);
-
-        const token = localStorage.getItem("accessToken");
-        const headers: HeadersInit = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
-        // Use raw fetch for multipart to avoid apiCall setting application/json
-        const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080/v1.0";
-        const photoRes = await fetch(`${API_URL}/listings/${listingId}/photos`, {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-
-        if (!photoRes.ok) {
-          const photoErr = await photoRes.json().catch(() => ({}));
-          console.warn("Photo upload failed:", photoErr);
-          // We continue because the listing is already created, but we might want to warn the user
-        }
+        await uploadListingPhoto({ listingId, photo });
       }
 
-      // 3. Publish the listing
-      await apiCall(`/listings/${listingId}/publish`, {
-        method: "POST",
-      });
+      // 3. Publish only when requested
+      if (mode === "publish") {
+        await apiCall(`/listings/${listingId}/publish`, {
+          method: "POST",
+        });
+      }
 
-      navigate(`/listing/${listingId}`);
+      navigate(mode === "draft" ? `/listing/${listingId}?edit=1` : `/listing/${listingId}`);
     } catch (err: any) {
       setError(err.message || "Failed to create listing");
     } finally {
       setIsLoading(false);
+      setSubmitMode(null);
     }
   };
 
@@ -158,7 +259,7 @@ export function Sell() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={(e) => e.preventDefault()}>
           <div className="form-group">
             <label htmlFor="title" className="form-label">
               Title
@@ -310,13 +411,33 @@ export function Sell() {
           </div>
 
           <button
-            type="submit"
-            className="btn btn-primary"
+            type="button"
+            className="btn btn-secondary"
             style={{ width: "100%", marginTop: "16px" }}
-            disabled={isLoading}
+            disabled={isLoading || !hasAnyInput}
+            onClick={() => void handleSubmit("draft")}
           >
-            {isLoading ? "Publishing..." : "Publish Listing"} <ArrowRight size={18} />
+            {isLoading && submitMode === "draft" ? "Saving Draft..." : "Save as Draft"}{" "}
+            <ArrowRight size={18} />
           </button>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ width: "100%", marginTop: "12px" }}
+            disabled={isLoading || !requiredFieldsComplete}
+            onClick={() => void handleSubmit("publish")}
+          >
+            {isLoading && submitMode === "publish" ? "Publishing..." : "Publish Now"}{" "}
+            <ArrowRight size={18} />
+          </button>
+
+          {hasAnyInput && !requiredFieldsComplete && (
+            <p className="text-muted" style={{ marginTop: 12, fontSize: "0.9rem" }}>
+              You can save this as a draft now. To publish immediately, fill Title, Category, Price,
+              and Condition.
+            </p>
+          )}
         </form>
       </motion.div>
     </div>
