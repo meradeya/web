@@ -64,8 +64,6 @@ function MyListingsSection({
 
   return (
     <div style={{ marginTop: 24 }}>
-      <h2 style={{ margin: "24px 0 12px" }}>My Listings</h2>
-
       {myListingsLoading && (
         <div className="grid">
           {PROFILE_SKELETON_KEYS.map((key) => (
@@ -553,7 +551,7 @@ function ProfileView({
 }
 
 export function Profile() {
-  const { userId, isAuthenticated } = useAuth();
+  const { userId, isAuthenticated, isInitializing } = useAuth();
   const navigate = useNavigate();
 
   const {
@@ -584,10 +582,11 @@ export function Profile() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Only redirect if auth initialization is complete AND user is not authenticated
+    if (!isInitializing && !isAuthenticated) {
       navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, isInitializing]);
 
   useEffect(() => {
     if (profile) {
@@ -599,6 +598,14 @@ export function Profile() {
       });
     }
   }, [profile]);
+
+  if (isInitializing) {
+    return (
+      <div className="main-content container" style={{ paddingTop: "120px" }}>
+        <div className="skeleton" style={{ height: 200, borderRadius: "var(--radius-lg)" }}></div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

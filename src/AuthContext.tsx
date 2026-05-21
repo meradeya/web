@@ -19,6 +19,7 @@ interface AuthState {
   isAuthenticated: boolean;
   userId: string | null;
   expiresAt: number | null;
+  isInitializing: boolean;
 }
 
 /**
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     isAuthenticated: false,
     userId: null,
     expiresAt: null,
+    isInitializing: true,
   });
 
   const refreshInProgressRef = useRef(false);
@@ -112,6 +114,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         isAuthenticated: true,
         userId: parseUserIdFromToken(newAccessToken),
         expiresAt,
+        isInitializing: false,
       });
 
       emitAuthSyncEvent("tokensRefreshed");
@@ -145,6 +148,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         isAuthenticated: false,
         userId: null,
         expiresAt: null,
+        isInitializing: false,
       });
 
       if (refreshTimeoutRef.current) {
@@ -206,10 +210,15 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
       if (expiresAt && now >= expiresAt) {
         // Token has expired, attempt refresh
-        refreshTokens().catch(() => {
-          // If refresh fails, force logout
-          forceLogout();
-        });
+        refreshTokens()
+          .then((success) => {
+            if (!success) {
+              forceLogout();
+            }
+          })
+          .finally(() => {
+            setAuthState((prev) => ({ ...prev, isInitializing: false }));
+          });
       } else if (expiresAt) {
         // Token is still valid, set up the state and schedule refresh
         const expiresInSeconds = Math.round((expiresAt - now) / 1000);
@@ -218,9 +227,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
           isAuthenticated: true,
           userId: parseUserIdFromToken(token),
           expiresAt,
+          isInitializing: false,
         });
         scheduleTokenRefresh(expiresInSeconds);
       }
+    } else {
+      // No token found, mark initialization as complete
+      setAuthState((prev) => ({ ...prev, isInitializing: false }));
     }
 
     return () => {
@@ -243,6 +256,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         isAuthenticated: true,
         userId: parseUserIdFromToken(accessToken),
         expiresAt: expiresAt || Date.now() + expiresInSeconds * 1000,
+        isInitializing: false,
       });
 
       scheduleTokenRefresh(expiresInSeconds);
@@ -283,6 +297,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         isAuthenticated: true,
         userId: parseUserIdFromToken(token),
         expiresAt: expiresAt || Date.now() + expiresInSeconds * 1000,
+        isInitializing: false,
       });
       scheduleTokenRefresh(expiresInSeconds);
     });

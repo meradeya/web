@@ -108,12 +108,20 @@ export function Sell() {
   const [submitMode, setSubmitMode] = useState<"draft" | "publish" | null>(null);
 
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
 
   const { data: categories, error: categoriesError } = useSWR("/categories", fetcher);
 
-  // If not authenticated, redirecting happens via protected route or just button disabled,
-  // but let's do a quick redirect if needed. Normally, AuthContext might handle this or we just show a message.
+  // Show loading while auth state is being initialized
+  if (isInitializing) {
+    return (
+      <div className="auth-container main-content" style={{ maxWidth: 640 }}>
+        <div className="skeleton" style={{ height: 400, borderRadius: "var(--radius-lg)" }} />
+      </div>
+    );
+  }
+
+  // If not authenticated, show auth required message
   if (!isAuthenticated) {
     return (
       <div className="main-content container flex items-center justify-center">
