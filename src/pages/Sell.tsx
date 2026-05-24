@@ -1,4 +1,4 @@
-import { useState } from "react";
+  import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import useSWR from "swr";
@@ -93,6 +93,11 @@ async function uploadListingPhoto({ listingId, photo }: { listingId: string; pho
   }
 }
 
+type PreviewPhoto = {
+  file: File;
+  blobUrl: string;
+};
+
 export function Sell() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -101,7 +106,7 @@ export function Sell() {
   const [condition, setCondition] = useState("GOOD");
   const [location, setLocation] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<PreviewPhoto[]>([]);
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -111,6 +116,15 @@ export function Sell() {
   const { isAuthenticated, isInitializing } = useAuth();
 
   const { data: categories, error: categoriesError } = useSWR("/categories", fetcher);
+
+  // Cleanup blob URLs on unmount or when photos change
+  useEffect(() => {
+    return () => {
+      photos.forEach((p) => {
+        URL.revokeObjectURL(p.blobUrl);
+      });
+    };
+  }, []);
 
   // Show loading while auth state is being initialized
   if (isInitializing) {
@@ -146,7 +160,7 @@ export function Sell() {
     price.trim().length > 0 ||
     location.trim().length > 0 ||
     categoryId.length > 0 ||
-    photo !== null ||
+    photos !== null ||
     currency !== "MDL" ||
     condition !== "GOOD";
 
@@ -197,9 +211,12 @@ export function Sell() {
 
       const listingId = listingData.id;
 
-      // 2. Upload photo if selected
-      if (photo) {
-        await uploadListingPhoto({ listingId, photo });
+      // 2. Upload photos if selected
+      if (photos && photos.length > 0) {
+        // Upload sequentially to avoid any race conditions on backend displayOrder
+        for (const p of photos) {
+          await uploadListingPhoto({ listingId, photo: p.file });
+        }
       }
 
       // 3. Publish only when requested
@@ -219,9 +236,24 @@ export function Sell() {
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // e.target.files?.[0] can be File | undefined — normalize to File | null for our state
-    const file = e.target.files?.[0] ?? null;
-    setPhoto(file);
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      const newPreviewPhotos = selectedFiles.map((file) => ({
+        file,
+        blobUrl: URL.createObjectURL(file), // Generate once
+      }));
+
+      setPhotos((prev) => {
+        const combined = [...prev, ...newPreviewPhotos];
+        // Clean up excess blob URLs if we truncate
+        if (combined.length > 10) {
+          combined.slice(10).forEach(p => URL.revokeObjectURL(p.blobUrl));
+        }
+        return combined.slice(0, 10);
+      });
+      // Clear input
+      e.target.value = "";
+    }
   };
 
   const flattenCategories = (nodes: any[]): any[] => {
@@ -393,29 +425,77 @@ export function Sell() {
 
           <div className="form-group">
             <label htmlFor="photo" className="form-label">
-              Photo
+              Photos (Max 10)
             </label>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <label
-                htmlFor="photo"
-                className="btn btn-secondary"
-                style={{
-                  flex: 1,
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  borderStyle: "dashed",
-                }}
-              >
-                <Upload size={18} /> {photo ? photo.name : "Upload Photo"}
-              </label>
-              <input
-                id="photo"
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                style={{ display: "none" }}
-              />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+              {photos.map((p, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    position: "relative",
+                    width: 80,
+                    height: 80,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    background: "#333",
+                  }}
+                >
+                  <img
+                    src={p.blobUrl}
+                    alt="preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      URL.revokeObjectURL(p.blobUrl);
+                      setPhotos(photos.filter((_, i) => i !== idx));
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      background: "rgba(0,0,0,0.5)",
+                      border: "none",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: 20,
+                      height: 20,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
             </div>
+            {photos.length < 10 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <label
+                  htmlFor="photo"
+                  className="btn btn-secondary"
+                  style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    borderStyle: "dashed",
+                  }}
+                >
+                  <Upload size={18} /> Upload Photos
+                </label>
+                <input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoChange}
+                  style={{ display: "none" }}
+                />
+              </div>
+            )}
           </div>
 
           <button

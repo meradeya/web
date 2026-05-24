@@ -8,8 +8,8 @@ import {
 } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useSWR from "swr";
-import { motion } from "framer-motion";
-import { apiCall, fetcher, formatPrice, resolvePhotoUrl } from "../api";
+import { motion, AnimatePresence } from "framer-motion";
+import { apiCall, fetcher, formatPrice, resolvePhotoUrl, generateId } from "../api";
 import { useAuth } from "../AuthContext";
 import {
   AlertCircle,
@@ -25,7 +25,12 @@ import {
   Trash2,
   Upload,
   X,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  GripHorizontal,
 } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 const flattenCategories = (nodes: any[]): any[] => {
   const result: any[] = [];
@@ -51,6 +56,15 @@ type ListingFormData = {
   currency: string;
   condition: string;
   location: string;
+};
+
+export type EditPhoto = {
+  id: string; // local unique ID
+  originalId?: string; // from backend if it existed
+  url?: string;
+  file?: File;
+  blobUrl?: string; // pre-generated blob URL for performance
+  deleted: boolean;
 };
 
 const LISTING_CONFIRM_MESSAGES: Record<ListingAction, string> = {
@@ -203,13 +217,14 @@ type ListingEditFormProps = {
   categoryOptions: any[];
   formData: ListingFormData;
   setFormData: Dispatch<SetStateAction<ListingFormData>>;
+  editPhotos: EditPhoto[];
+  setEditPhotos: Dispatch<SetStateAction<EditPhoto[]>>;
   isSaving: boolean;
-  photoUploadLoading: boolean;
   photoUploadError: string;
-  photoDeleteLoading: string | null;
   onSubmit: (e: SyntheticEvent<HTMLFormElement>) => void;
   onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPhotoDelete: (photoId: string) => void;
+  onPhotoRestore: (photoId: string) => void;
 };
 
 function ListingEditForm({
@@ -217,14 +232,38 @@ function ListingEditForm({
   categoryOptions,
   formData,
   setFormData,
+  editPhotos,
+  setEditPhotos,
   isSaving,
-  photoUploadLoading,
   photoUploadError,
-  photoDeleteLoading,
   onSubmit,
   onPhotoUpload,
   onPhotoDelete,
+  onPhotoRestore,
 }: Readonly<ListingEditFormProps>) {
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const startIndex = result.source.index;
+    const endIndex = result.destination.index;
+
+    // If nothing changed, do nothing
+    if (startIndex === endIndex) return;
+
+    // Use functional state update to avoid stale closures when working with current state
+    setEditPhotos((prev) => {
+      const reorderedPhotos = Array.from(prev);
+      // Guard against invalid indexes
+      if (startIndex < 0 || startIndex >= reorderedPhotos.length) return prev;
+      const [removed] = reorderedPhotos.splice(startIndex, 1);
+      if (!removed) return prev;
+      const insertIndex = Math.max(0, Math.min(endIndex, reorderedPhotos.length));
+      reorderedPhotos.splice(insertIndex, 0, removed);
+      return reorderedPhotos;
+    });
+  };
+
+  const currentActivePhotos = editPhotos.filter((p) => !p.deleted).length;
+
   return (
     <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div className="form-group">
@@ -337,59 +376,118 @@ function ListingEditForm({
       </div>
 
       <div className="form-group">
-        <label htmlFor="photo-upload" className="form-label">
-          Photos
-        </label>
-        {listing.photos?.length > 0 && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
-              gap: "12px",
-              marginBottom: "12px",
-            }}
-          >
-            {listing.photos.map((photo: any, index: number) => (
-              <div
-                key={photo.id}
-                style={{
-                  position: "relative",
-                  aspectRatio: "1",
-                  borderRadius: "var(--radius-md)",
-                  overflow: "hidden",
-                  background: "#1a1a20",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                <img
-                  src={resolvePhotoUrl(photo.url)}
-                  alt={`${listing.title} gallery ${index + 1}`}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-danger"
+        <label className="form-label">Photos ({currentActivePhotos}/10)</label>
+
+        {editPhotos.length > 0 && (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="photos-list" direction="horizontal">
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
                   style={{
-                    position: "absolute",
-                    top: "4px",
-                    right: "4px",
-                    width: "32px",
-                    height: "32px",
-                    padding: "0",
-                    borderRadius: "50%",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "12px",
+                    marginBottom: "12px",
                   }}
-                  onClick={() => onPhotoDelete(photo.id)}
-                  disabled={photoDeleteLoading === photo.id}
                 >
-                  {photoDeleteLoading === photo.id ? (
-                    <span style={{ fontSize: "12px" }}>...</span>
-                  ) : (
-                    <Trash2 size={14} />
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
+                  {editPhotos.map((photo, index) => (
+                    <Draggable key={photo.id} draggableId={photo.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          style={{
+                            position: "relative",
+                            width: "100px",
+                            height: "100px",
+                            borderRadius: "var(--radius-md)",
+                            overflow: "hidden",
+                            background: "#1a1a20",
+                            border: photo.deleted
+                              ? "2px dashed #ff4444"
+                              : "1px solid var(--border)",
+                            opacity: photo.deleted ? 0.5 : 1,
+                            boxShadow: snapshot.isDragging ? "0 5px 15px rgba(0,0,0,0.5)" : "none",
+                            ...provided.draggableProps.style,
+                          }}
+                        >
+                          <img
+                            src={
+                              photo.blobUrl
+                                ? photo.blobUrl
+                                : resolvePhotoUrl(photo.url || "")
+                            }
+                            alt={`Photo ${index + 1}`}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+
+                          <div
+                            {...provided.dragHandleProps}
+                            style={{
+                              position: "absolute",
+                              top: "4px",
+                              left: "4px",
+                              width: "24px",
+                              height: "24px",
+                              background: "rgba(0,0,0,0.5)",
+                              borderRadius: "4px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "white",
+                            }}
+                          >
+                            <GripHorizontal size={14} />
+                          </div>
+
+                          {photo.deleted ? (
+                            <button
+                              type="button"
+                              className="btn"
+                              style={{
+                                position: "absolute",
+                                top: "4px",
+                                right: "4px",
+                                width: "24px",
+                                height: "24px",
+                                padding: "0",
+                                borderRadius: "50%",
+                                background: "var(--surface)",
+                                color: "white",
+                              }}
+                              onClick={() => onPhotoRestore(photo.id)}
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-danger"
+                              style={{
+                                position: "absolute",
+                                top: "4px",
+                                right: "4px",
+                                width: "24px",
+                                height: "24px",
+                                padding: "0",
+                                borderRadius: "50%",
+                              }}
+                              onClick={() => onPhotoDelete(photo.id)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         )}
 
         {photoUploadError && (
@@ -403,35 +501,37 @@ function ListingEditForm({
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              color: "#ffb3b3",
+              color: "#ff7b7b",
             }}
           >
             <AlertCircle size={18} /> {photoUploadError}
           </div>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <label
-            htmlFor="photo-upload"
-            className="btn btn-secondary"
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              cursor: "pointer",
-              borderStyle: "dashed",
-            }}
-          >
-            <Upload size={18} /> {photoUploadLoading ? "Uploading..." : "Add Photo"}
-          </label>
-          <input
-            id="photo-upload"
-            type="file"
-            accept="image/*"
-            onChange={onPhotoUpload}
-            disabled={photoUploadLoading}
-            style={{ display: "none" }}
-          />
-        </div>
+        {currentActivePhotos < 10 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <label
+              htmlFor="photo-upload"
+              className="btn btn-secondary"
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                cursor: "pointer",
+                borderStyle: "dashed",
+              }}
+            >
+              <Upload size={18} /> Upload Photos
+            </label>
+            <input
+              id="photo-upload"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onPhotoUpload}
+              style={{ display: "none" }}
+            />
+          </div>
+        )}
       </div>
 
       <button type="submit" className="btn btn-primary" disabled={isSaving}>
@@ -505,9 +605,12 @@ export function ListingDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<ListingAction | null>(null);
   const [photoUploadError, setPhotoUploadError] = useState("");
-  const [photoUploadLoading, setPhotoUploadLoading] = useState(false);
   const [photoDeleteLoading, setPhotoDeleteLoading] = useState<string | null>(null);
   const [pendingConfirmAction, setPendingConfirmAction] = useState<ListingAction | null>(null);
+   const [editPhotos, setEditPhotos] = useState<EditPhoto[]>([]);
+   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
+
   const [formData, setFormData] = useState<ListingFormData>({
     categoryId: "",
     title: "",
@@ -536,15 +639,29 @@ export function ListingDetail() {
       condition: listing.condition || "GOOD",
       location: listing.location || "",
     });
-  }, [listing]);
+
+    setEditPhotos(
+      (listing.photos || []).map((p: any) => ({
+        id: p.id,
+        originalId: p.id,
+        url: p.url,
+        deleted: false,
+      })),
+    );
+   }, [listing]);
+
+   // Cleanup blob URLs when component unmounts or photos change
+   useEffect(() => {
+     return () => {
+       editPhotos.forEach((photo) => {
+         if (photo.blobUrl) {
+           URL.revokeObjectURL(photo.blobUrl);
+         }
+       });
+     };
+   }, []);
 
   const canManage = Boolean(listing && isAuthenticated && userId && listing.sellerId === userId);
-  const mainImage =
-    listing?.photos && listing.photos.length > 0
-      ? resolvePhotoUrl(
-          listing.photos.find((p: any) => p.displayOrder === 0)?.url || listing.photos[0].url,
-        )
-      : null;
   const categoryOptions = useMemo(() => flattenCategories(categories || []), [categories]);
 
   const setBusyAction = (action: ListingAction | null) => {
@@ -553,13 +670,69 @@ export function ListingDetail() {
 
   const handleSave = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!listing) return;
+    if (!listing || !id) return;
 
     setSaveError("");
     setIsSaving(true);
     try {
-      // Build a minimal PATCH payload that only sends fields that changed (or are intentionally set).
-      const payload: Record<string, any> = { version: listing.version };
+      // 1. Process Photos FIRST
+      let trackingListing = listing;
+
+      // Handle deletes
+      for (const p of editPhotos) {
+        if (p.deleted && p.originalId) {
+          trackingListing = await apiCall(`/listings/${id}/photos/${p.originalId}`, {
+            method: "DELETE",
+          });
+        }
+      }
+
+      // Handle uploads
+      const finalIdsInOrder: string[] = [];
+      const token = localStorage.getItem("accessToken");
+      const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080/v1.0";
+
+      for (const p of editPhotos) {
+        if (p.deleted) continue;
+
+        if (p.originalId) {
+          finalIdsInOrder.push(p.originalId);
+        } else if (p.file) {
+          const mfd = new FormData();
+          mfd.append("file", p.file);
+
+          const res = await fetch(`${API_URL}/listings/${id}/photos`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: mfd,
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.detail || errorData.title || "Failed to upload a photo");
+          }
+          const updatedListing = await res.json();
+          const prevIds = new Set(trackingListing.photos.map((ph: any) => ph.id));
+          const newlyAdded = updatedListing.photos.find((ph: any) => !prevIds.has(ph.id));
+          if (newlyAdded) {
+            finalIdsInOrder.push(newlyAdded.id);
+          }
+          trackingListing = updatedListing;
+        }
+      }
+
+      // Reorder photos
+      if (finalIdsInOrder.length > 0) {
+        await apiCall(`/listings/${id}/photos/reorder`, {
+          method: "POST",
+          body: JSON.stringify({ photoIds: finalIdsInOrder }),
+        });
+      }
+
+      // 2. Build PATCH payload for listing details
+      // Get the latest version directly after we made changes
+      const latestListingRes = await apiCall(`/listings/${id}`, { method: "GET" });
+      const payload: Record<string, any> = { version: latestListingRes.version };
 
       const cat = normalizeText(formData.categoryId);
       if (cat !== (listing.categoryId || null)) payload.categoryId = cat;
@@ -583,10 +756,14 @@ export function ListingDetail() {
       const loc = normalizeText(formData.location);
       if (loc !== (listing.location || null)) payload.location = loc;
 
-      await apiCall(`/listings/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
+      if (Object.keys(payload).length > 1) {
+        // more than just "version"
+        await apiCall(`/listings/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      }
+
       await mutate();
       setIsEditing(false);
       setSearchParams({});
@@ -625,55 +802,43 @@ export function ListingDetail() {
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!id || !e.target.files?.[0]) return;
-    const file = e.target.files[0];
+   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+     if (!e.target.files) return;
+     const files = Array.from(e.target.files);
 
-    setPhotoUploadError("");
-    setPhotoUploadLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+     setEditPhotos((prev) => {
+       const activeCount = prev.filter((p) => !p.deleted).length;
+       const allowedCount = 10 - activeCount;
+       const toAdd = files.slice(0, allowedCount).map((f) => ({
+         id: generateId(),
+         file: f,
+         blobUrl: URL.createObjectURL(f), // Generate blob URL once
+         deleted: false,
+       }));
+       return [...prev, ...toAdd];
+     });
 
-      const token = localStorage.getItem("accessToken");
-      const headers: HeadersInit = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
+     // clear input
+     e.target.value = "";
+   };
 
-      const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080/v1.0";
-      const res = await fetch(`${API_URL}/listings/${id}/photos`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || err.title || "Failed to upload photo");
-      }
-
-      await mutate();
-      e.target.value = ""; // Reset file input
-    } catch (err: any) {
-      setPhotoUploadError(err.message || "Failed to upload photo");
-    } finally {
-      setPhotoUploadLoading(false);
-    }
+  const handlePhotoDelete = (photoId: string) => {
+    setEditPhotos((prev) =>
+      prev.map((p) => {
+        if (p.id === photoId) {
+          return { ...p, deleted: true };
+        }
+        return p;
+      }),
+    );
   };
 
-  const handlePhotoDelete = async (photoId: string) => {
-    if (!id) return;
-
-    setPhotoDeleteLoading(photoId);
-    try {
-      await apiCall(`/listings/${id}/photos/${photoId}`, { method: "DELETE" });
-      await mutate();
-    } catch (err: any) {
-      setPhotoUploadError(err.message || "Failed to delete photo");
-    } finally {
-      setPhotoDeleteLoading(null);
-    }
+  const handlePhotoRestore = (photoId: string) => {
+    setEditPhotos((prev) => {
+      const activeCount = prev.filter((x) => !x.deleted).length;
+      if (activeCount >= 10) return prev; // Cannot restore if already 10
+      return prev.map((p) => (p.id === photoId ? { ...p, deleted: false } : p));
+    });
   };
 
   if (isLoading)
@@ -717,8 +882,147 @@ export function ListingDetail() {
         transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
         <div className="detail-gallery">
-          {mainImage ? (
-            <img src={mainImage} alt={listing.title} />
+          {listing.photos && listing.photos.length > 0 ? (
+            <div style={{ position: "relative", width: "100%", height: "100%" }}>
+               <AnimatePresence mode="wait">
+                 <motion.img
+                   key={currentImageIndex}
+                   src={resolvePhotoUrl(listing.photos[currentImageIndex].url)}
+                   alt={`${listing.title} - ${currentImageIndex}`}
+                   initial={{
+                     x: slideDirection === "right" ? 100 : -100,
+                     opacity: 0,
+                   }}
+                   animate={{ x: 0, opacity: 1 }}
+                   exit={{
+                     x: slideDirection === "right" ? -100 : 100,
+                     opacity: 0,
+                   }}
+                   transition={{
+                     duration: 0.4,
+                     ease: [0.25, 0.46, 0.45, 0.94],
+                   }}
+                   style={{
+                     width: "100%",
+                     height: "100%",
+                     objectFit: "cover",
+                     position: "absolute",
+                     top: 0,
+                     left: 0,
+                   }}
+                 />
+               </AnimatePresence>
+
+              {listing.photos.length > 1 && (
+                <>
+                   <button
+                     className="btn"
+                     onClick={() => {
+                       setSlideDirection("left");
+                       setCurrentImageIndex((i) => Math.max(0, i - 1));
+                     }}
+                     disabled={currentImageIndex === 0}
+                     style={{
+                       position: "absolute",
+                       left: 16,
+                       top: "50%",
+                       transform: "translateY(-50%)",
+                       background: "rgba(0,0,0,0.5)",
+                       color: "white",
+                       borderRadius: "50%",
+                       width: 40,
+                       height: 40,
+                       padding: 0,
+                       display: "flex",
+                       alignItems: "center",
+                       justifyContent: "center",
+                       opacity: currentImageIndex === 0 ? 0.3 : 1,
+                     }}
+                   >
+                     <ChevronLeft size={24} />
+                   </button>
+                   <button
+                     className="btn"
+                     onClick={() => {
+                       setSlideDirection("right");
+                       setCurrentImageIndex((i) =>
+                         Math.min(listing.photos.length - 1, i + 1),
+                       );
+                     }}
+                     disabled={currentImageIndex === listing.photos.length - 1}
+                     style={{
+                       position: "absolute",
+                       right: 16,
+                       top: "50%",
+                       transform: "translateY(-50%)",
+                       background: "rgba(0,0,0,0.5)",
+                       color: "white",
+                       borderRadius: "50%",
+                       width: 40,
+                       height: 40,
+                       padding: 0,
+                       display: "flex",
+                       alignItems: "center",
+                       justifyContent: "center",
+                       opacity: currentImageIndex === listing.photos.length - 1 ? 0.3 : 1,
+                     }}
+                   >
+                     <ChevronRight size={24} />
+                   </button>
+
+                   <div
+                     style={{
+                       position: "absolute",
+                       bottom: 16,
+                       left: "50%",
+                       transform: "translateX(-50%)",
+                       display: "flex",
+                       gap: 8,
+                       alignItems: "center",
+                       justifyContent: "center",
+                       width: "calc(100% - 32px)",
+                       maxWidth: "600px",
+                     }}
+                   >
+                     {listing.photos.map((_: any, idx: number) => (
+                       <motion.button
+                         key={idx}
+                         onClick={() => {
+                           setSlideDirection(idx > currentImageIndex ? "right" : "left");
+                           setCurrentImageIndex(idx);
+                         }}
+                         whileHover={{ scale: 1.05 }}
+                         whileTap={{ scale: 0.95 }}
+                         style={{
+                           width: 60,
+                           height: 60,
+                           borderRadius: "var(--radius-sm)",
+                           border:
+                             idx === currentImageIndex
+                               ? "2px solid var(--accent)"
+                               : "1px solid rgba(255,255,255,0.2)",
+                           padding: 0,
+                           overflow: "hidden",
+                           background: "rgba(0,0,0,0.3)",
+                           cursor: "pointer",
+                           flexShrink: 0,
+                         }}
+                       >
+                         <img
+                           src={resolvePhotoUrl(listing.photos[idx].url)}
+                           alt={`Thumbnail ${idx + 1}`}
+                           style={{
+                             width: "100%",
+                             height: "100%",
+                             objectFit: "cover",
+                           }}
+                         />
+                       </motion.button>
+                     ))}
+                   </div>
+                </>
+              )}
+            </div>
           ) : (
             <div
               className="text-muted flex items-center justify-center"
@@ -798,13 +1102,14 @@ export function ListingDetail() {
               categoryOptions={categoryOptions}
               formData={formData}
               setFormData={setFormData}
+              editPhotos={editPhotos}
+              setEditPhotos={setEditPhotos}
               isSaving={isSaving}
-              photoUploadLoading={photoUploadLoading}
               photoUploadError={photoUploadError}
-              photoDeleteLoading={photoDeleteLoading}
               onSubmit={handleSave}
               onPhotoUpload={(e) => void handlePhotoUpload(e)}
-              onPhotoDelete={(photoId) => void handlePhotoDelete(photoId)}
+              onPhotoDelete={(photoId) => handlePhotoDelete(photoId)}
+              onPhotoRestore={(photoId) => handlePhotoRestore(photoId)}
             />
           ) : (
             <ListingReadOnlyDetails listing={listing} />
