@@ -9,7 +9,7 @@ import {
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import useSWR from "swr";
 import { motion, AnimatePresence } from "framer-motion";
-import { apiCall, fetcher, formatPrice, resolvePhotoUrl, generateId } from "../api";
+import { apiCall, fetcher, formatPrice, resolvePhotoUrl, generateId, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
 import {
   AlertCircle,
@@ -690,7 +690,6 @@ export function ListingDetail() {
       // Handle uploads
       const finalIdsInOrder: string[] = [];
       const token = localStorage.getItem("accessToken");
-      const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080/v1.0";
 
       for (const p of editPhotos) {
         if (p.deleted) continue;
