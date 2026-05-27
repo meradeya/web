@@ -1,8 +1,8 @@
-  import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import useSWR from "swr";
-import { apiCall, fetcher } from "../api";
+import { apiCall, fetcher, API_URL } from "../api";
 import { useAuth } from "../AuthContext";
 import { AlertCircle, ArrowRight, Upload } from "lucide-react";
 
@@ -80,7 +80,6 @@ async function uploadListingPhoto({ listingId, photo }: { listingId: string; pho
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080/v1.0";
   const photoRes = await fetch(`${API_URL}/listings/${listingId}/photos`, {
     method: "POST",
     headers,
